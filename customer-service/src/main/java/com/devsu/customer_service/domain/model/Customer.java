@@ -11,7 +11,7 @@ public class Customer extends Person{
     private String password;
     private Boolean status;
 
-    @Builder(buildMethodName = "customerBuilder")
+    @Builder(builderMethodName = "customerBuilder")
     public Customer(Integer personId, String name, String gender, int age, Integer identification, String address, String phone, String password, Boolean status) {
         super(personId, name, gender, age, identification, address, phone);
         this.password = password;
