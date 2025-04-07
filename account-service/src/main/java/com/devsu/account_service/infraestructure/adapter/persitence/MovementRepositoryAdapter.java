@@ -1,0 +1,81 @@
+package com.devsu.account_service.infraestructure.adapter.persitence;
+
+import com.devsu.account_service.domain.enums.MovementType;
+import com.devsu.account_service.domain.model.Movement;
+import com.devsu.account_service.domain.repository.MovementRepository;
+import com.devsu.account_service.exception.AccountNotFoundException;
+import com.devsu.account_service.exception.FieldInvalidException;
+import com.devsu.account_service.exception.MovementNotFoundException;
+import com.devsu.account_service.infraestructure.adapter.persitence.entity.AccountEntity;
+import com.devsu.account_service.infraestructure.adapter.persitence.entity.MovementEntity;
+import com.devsu.account_service.infraestructure.adapter.persitence.mapper.MovementMapper;
+import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaAccountRepository;
+import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaMovementRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class MovementRepositoryAdapter implements MovementRepository {
+
+    private final JpaMovementRepository jpaMovementRepository;
+    private final MovementMapper movementMapper;
+    private final JpaAccountRepository jpaAccountRepository;
+
+    public MovementRepositoryAdapter(JpaMovementRepository jpaMovementRepository, MovementMapper movementMapper,
+                                     JpaAccountRepository jpaAccountRepository){
+        this.jpaMovementRepository = jpaMovementRepository;
+        this.movementMapper = movementMapper;
+        this.jpaAccountRepository = jpaAccountRepository;
+    }
+
+    // Validate balance account
+    public void updateBalance(Movement movement){
+        // Get the account balance
+        double currentBalance = jpaAccountRepository.findBalanceByAccountId(movement.getAccountId());
+        if (currentBalance == 0.00){
+            throw new FieldInvalidException("The unavailable balance");
+        }
+
+        // Get account
+        AccountEntity account = jpaAccountRepository.findById(movement.getAccountId())
+                .orElseThrow(()-> new AccountNotFoundException("Account not found with id: " + movement.getAccountId()));
+
+        // Validate movement type
+        if (movement.getMovementType().equals(MovementType.DEPOSIT)){
+            account.setInitialBalance(currentBalance + movement.getValue());
+        } else if (movement.getMovementType().equals(MovementType.WITHDRAWAL)) {
+            account.setInitialBalance(account.getInitialBalance() - movement.getValue());
+        }
+        jpaAccountRepository.save(account);
+    }
+    @Override
+    public Movement saveMovement(Movement movement) {
+        updateBalance(movement);
+
+        MovementEntity saveMovement = movementMapper.toEntity(movement);
+        return movementMapper.toDomain(jpaMovementRepository.save(saveMovement));
+    }
+
+    @Override
+    public Movement updateMovement(Integer movementId, Movement movement) {
+        MovementEntity existingMovement = jpaMovementRepository.findById(movementId)
+                .orElseThrow(() -> new MovementNotFoundException("Movement not found with id: " + movementId));
+
+        updateBalance(movement);
+
+        movementMapper.updateMovement(existingMovement, movement);
+        MovementEntity updateMovement = jpaMovementRepository.save(existingMovement);
+        return movementMapper.toDomain(updateMovement);
+    }
+
+    @Override
+    public List<Movement> getMovements() {
+        return movementMapper.toMovements(jpaMovementRepository.findAll());
+    }
+
+    @Override
+    public List<Movement> findByAccountId(Integer accountId) {
+        return movementMapper.toMovements(jpaMovementRepository.findByAccount_AccountId(accountId));
+    }
+}
