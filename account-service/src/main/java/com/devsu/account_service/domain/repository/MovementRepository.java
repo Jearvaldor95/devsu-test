@@ -8,7 +8,7 @@ public interface MovementRepository {
 
     Movement saveMovement(Movement movement);
 
-    Movement updateMovement(Integer movementId);
+    Movement updateMovement(Integer movementId, Movement movement);
 
     List<Movement> getMovements();
 
