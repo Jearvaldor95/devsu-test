@@ -18,5 +18,5 @@ public class Account {
     private Double initialBalance;
     private Boolean status;
     private Integer pin;
-    private Integer CustomerId;
+    private Integer customerId;
 }
