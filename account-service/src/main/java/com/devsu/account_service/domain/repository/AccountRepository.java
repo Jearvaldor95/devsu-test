@@ -15,7 +15,7 @@ public interface AccountRepository {
 
     Account findByAccountId(Integer accountId);
 
-    Account updateAccount(Integer accountId);
+    Account updateAccount(Integer accountId, Account account);
 
     Account findByCustomerId(Integer customerId);
 
