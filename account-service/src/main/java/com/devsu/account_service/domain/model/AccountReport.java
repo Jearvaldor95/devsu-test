@@ -13,6 +13,12 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class AccountReport {
-    private Account account;
-    private List<Movement> movements;
+    private LocalDate date;
+    private String customerName;
+    private Long accountNumber;
+    private String accountType;
+    private Double initialBalance;
+    private Boolean status;
+    private Double movement;
+    private Double availableBalance;
 }
