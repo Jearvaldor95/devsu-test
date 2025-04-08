@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record AccountResponse(
+        Integer accountId,
         Long accountNumber,
         String accountType,
         Double initialBalance,
@@ -17,6 +18,7 @@ public record AccountResponse(
 
     public static AccountResponse of(Account account) {
         return new AccountResponse(
+                account.getAccountId(),
                 account.getAccountNumber(),
                 account.getAccountType().name(),
                 account.getInitialBalance(),
@@ -25,5 +27,9 @@ public record AccountResponse(
         );
     }
 
-
+    public static List<AccountResponse> accountResponses(List<Account> accounts) {
+        return accounts.stream()
+                .map(AccountResponse::of)
+                .toList();
+    }
 }

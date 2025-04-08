@@ -1,6 +1,7 @@
 package com.devsu.account_service.config;
 
 import com.devsu.account_service.exception.*;
+import com.devsu.account_service.infraestructure.adapter.external.exception.CustomerNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -26,6 +27,16 @@ public class GlobalExceptionHandler {
                 .message(exception.getMessage()).build();
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
+
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlerCustomerNotFoundException(CustomerNotFoundException exception){
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .error("NOT_FOUND")
+                .message(exception.getMessage()).build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handlerConflictException(ConflictException exception){
