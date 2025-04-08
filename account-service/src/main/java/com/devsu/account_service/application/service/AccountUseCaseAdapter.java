@@ -42,12 +42,12 @@ public class AccountUseCaseAdapter implements AccountUseCase{
     }
 
     @Override
-    public Account findByCustomerId(Integer customerId) {
+    public List<Account> findByCustomerId(Integer customerId) {
         return accountRepository.findByCustomerId(customerId);
     }
 
     @Override
-    public AccountReport getReports(LocalDate startDate, LocalDate endDate, Integer customerId) {
+    public List<AccountReport> getReports(LocalDate startDate, LocalDate endDate, Integer customerId) {
         return accountRepository.getReports(startDate, endDate, customerId);
     }
 }
