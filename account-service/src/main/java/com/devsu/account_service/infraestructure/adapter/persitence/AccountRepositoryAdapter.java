@@ -2,12 +2,13 @@ package com.devsu.account_service.infraestructure.adapter.persitence;
 
 import com.devsu.account_service.domain.model.Account;
 import com.devsu.account_service.domain.model.AccountReport;
-import com.devsu.account_service.domain.model.Movement;
 import com.devsu.account_service.domain.repository.AccountRepository;
 import com.devsu.account_service.domain.strategy.AccountStrategy;
 import com.devsu.account_service.domain.strategy.AccountStrategyFactory;
 import com.devsu.account_service.exception.AccountNotFoundException;
 import com.devsu.account_service.exception.ConflictException;
+import com.devsu.account_service.infraestructure.adapter.external.CustomerDto;
+import com.devsu.account_service.infraestructure.adapter.external.exception.CustomerNotFoundException;
 import com.devsu.account_service.infraestructure.adapter.persitence.entity.AccountEntity;
 import com.devsu.account_service.infraestructure.adapter.persitence.entity.MovementEntity;
 import com.devsu.account_service.infraestructure.adapter.persitence.mapper.AccountMapper;
@@ -15,8 +16,10 @@ import com.devsu.account_service.infraestructure.adapter.persitence.mapper.Movem
 import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaAccountRepository;
 import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaMovementRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -26,31 +29,19 @@ public class AccountRepositoryAdapter implements AccountRepository {
     private final AccountMapper accountMapper;
     private final AccountStrategyFactory accountStrategyFactory;
     private final JpaMovementRepository jpaMovementRepository;
-    private final MovementMapper movementMapper;
+    private final WebClient webClient;
 
     public AccountRepositoryAdapter(JpaAccountRepository jpaAccountRepository, AccountMapper accountMapper, AccountStrategyFactory accountStrategyFactory,
-                                    JpaMovementRepository jpaMovementRepository, MovementMapper movementMapper){
+                                    JpaMovementRepository jpaMovementRepository, MovementMapper movementMapper, WebClient webClient){
         this.jpaAccountRepository = jpaAccountRepository;
         this.accountMapper = accountMapper;
         this.accountStrategyFactory = accountStrategyFactory;
         this.jpaMovementRepository = jpaMovementRepository;
-        this.movementMapper = movementMapper;
+        this.webClient = webClient;
     }
 
+    // validate account type
     public void validateAccountType(Account account){
-        String accountType = account.getAccountType().name();
-
-        // Check the account type
-        AccountStrategy strategy = accountStrategyFactory.getAccountType(accountType);
-
-        account = strategy.createAccount(account);
-
-        // Generate unique account number according to type
-        String accountNumber = accountStrategyFactory.generateAccountNumber(accountType);
-        account.setAccountNumber(Long.valueOf(accountNumber));
-    }
-    @Override
-    public Account saveAccount(Account account) {
         String accountType = account.getAccountType().name();
 
         // Check the account type
@@ -66,6 +57,27 @@ public class AccountRepositoryAdapter implements AccountRepository {
         if (jpaAccountRepository.existsByAccountNumber(accountNumber)) {
             throw new ConflictException("Account already exists");
         }
+    }
+
+    // Validate if the customer exists
+    public CustomerDto getCustomer(Integer customerId){
+        try {
+            return webClient.get()
+                    .uri("/customers/{customerId}", customerId)
+                    .retrieve()
+                    .bodyToMono(CustomerDto.class)
+                    .block();
+        }catch (Exception exception){
+            throw new CustomerNotFoundException("Customer not found with id: "+ customerId);
+        }
+
+    }
+
+    @Override
+    public Account saveAccount(Account account) {
+        getCustomer(account.getCustomerId());
+
+        validateAccountType(account);
 
         AccountEntity saveAccount = accountMapper.toEntity(account);
         return accountMapper.toDomain(jpaAccountRepository.save(saveAccount));
@@ -98,34 +110,48 @@ public class AccountRepositoryAdapter implements AccountRepository {
         accountStrategyFactory.getAccountType(account.getAccountType().name());
 
         accountMapper.updateAccount(existingAccount, account);
-        AccountEntity updateAccount = jpaAccountRepository.save(existingAccount);
-        return accountMapper.toDomain(updateAccount);
+
+        return accountMapper.toDomain(jpaAccountRepository.save(existingAccount));
     }
 
     @Override
-    public Account findByCustomerId(Integer customerId) {
-        AccountEntity existsAccount = jpaAccountRepository.findByCustomerId(customerId)
-                .orElseThrow(()-> new AccountNotFoundException("Account not found for customer"));
-        return accountMapper.toDomain(existsAccount);
+    public List<Account> findByCustomerId(Integer customerId) {
+        List<AccountEntity> accountEntities = jpaAccountRepository.findByCustomerId(customerId);
+        return accountMapper.toAccounts(accountEntities);
     }
 
     @Override
-    public AccountReport getReports(LocalDate startDate, LocalDate endDate, Integer customerId) {
+    public List<AccountReport> getReports(LocalDate startDate, LocalDate endDate, Integer customerId) {
+        CustomerDto customerDto = getCustomer(customerId);
+        List<AccountEntity> accountEntities = jpaAccountRepository.findByCustomerId(customerId);
 
-        AccountEntity accountEntity = jpaAccountRepository.findByCustomerId(customerId)
-                .orElseThrow(() -> new RuntimeException("Account not found for customer"));
-        Account account = accountMapper.toDomain(accountEntity);
+        List<AccountReport> reports = new ArrayList<>();
 
-        List<MovementEntity> movements = jpaMovementRepository
-                .findByAccount_AccountNumberAndDateBetween(
-                        accountEntity.getAccountNumber(), startDate, endDate
-                );
-        List<Movement> movement = movementMapper.toMovements(movements);
+        for (AccountEntity accountEntity : accountEntities) {
+            List<MovementEntity> movements = jpaMovementRepository
+                    .findByAccount_AccountNumberAndDateBetween(
+                            accountEntity.getAccountNumber(),
+                            startDate,
+                            endDate
+                    );
 
-        return AccountReport.builder()
-                .account(account)
-                .movements(movement)
-                .build();
+            for (MovementEntity movement : movements) {
+                AccountReport report = AccountReport.builder()
+                        .date(movement.getDate())
+                        .customerName(customerDto.getName())
+                        .accountNumber(accountEntity.getAccountNumber())
+                        .accountType(accountEntity.getAccountType().name())
+                        .initialBalance(accountEntity.getInitialBalance())
+                        .status(accountEntity.getStatus())
+                        .movement(movement.getValue())
+                        .availableBalance(movement.getBalance())
+                        .build();
+
+                reports.add(report);
+            }
+        }
+
+        return reports;
     }
 
 }

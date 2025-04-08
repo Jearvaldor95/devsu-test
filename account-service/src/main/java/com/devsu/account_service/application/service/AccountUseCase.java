@@ -17,7 +17,7 @@ public interface AccountUseCase {
 
     Account updateAccount(Integer accountId, Account account);
 
-    Account findByCustomerId(Integer customerId);
+    List<Account> findByCustomerId(Integer customerId);
 
-    AccountReport getReports(LocalDate startDate, LocalDate endDate, Integer customerId);
+    List<AccountReport> getReports(LocalDate startDate, LocalDate endDate, Integer customerId);
 }

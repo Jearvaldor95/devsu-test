@@ -5,6 +5,7 @@ import com.devsu.account_service.infraestructure.adapter.persitence.entity.Accou
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.Mappings;
 
 import java.util.List;
 
@@ -17,5 +18,11 @@ public interface AccountMapper {
 
     List<Account> toAccounts(List<AccountEntity> accountEntities);
 
+    @Mappings({
+            @Mapping(target = "accountId", ignore = true),
+            @Mapping(target = "accountNumber", ignore = true),
+            @Mapping(target = "customerId", ignore = true)
+
+    })
     void updateAccount(@MappingTarget AccountEntity accountEntity, Account account);
 }
