@@ -7,12 +7,13 @@ import com.devsu.account_service.domain.strategy.AccountStrategy;
 import com.devsu.account_service.domain.strategy.AccountStrategyFactory;
 import com.devsu.account_service.exception.AccountNotFoundException;
 import com.devsu.account_service.exception.ConflictException;
+import com.devsu.account_service.infraestructure.adapter.external.AccountCreatedEvent;
 import com.devsu.account_service.infraestructure.adapter.external.CustomerDto;
 import com.devsu.account_service.infraestructure.adapter.external.exception.CustomerNotFoundException;
+import com.devsu.account_service.infraestructure.adapter.messaging.AccountMQProducer;
 import com.devsu.account_service.infraestructure.adapter.persitence.entity.AccountEntity;
 import com.devsu.account_service.infraestructure.adapter.persitence.entity.MovementEntity;
 import com.devsu.account_service.infraestructure.adapter.persitence.mapper.AccountMapper;
-import com.devsu.account_service.infraestructure.adapter.persitence.mapper.MovementMapper;
 import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaAccountRepository;
 import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaMovementRepository;
 import org.springframework.stereotype.Repository;
@@ -30,14 +31,16 @@ public class AccountRepositoryAdapter implements AccountRepository {
     private final AccountStrategyFactory accountStrategyFactory;
     private final JpaMovementRepository jpaMovementRepository;
     private final WebClient webClient;
+    private final AccountMQProducer accountMQProducer;
 
     public AccountRepositoryAdapter(JpaAccountRepository jpaAccountRepository, AccountMapper accountMapper, AccountStrategyFactory accountStrategyFactory,
-                                    JpaMovementRepository jpaMovementRepository, MovementMapper movementMapper, WebClient webClient){
+                                    JpaMovementRepository jpaMovementRepository, WebClient webClient, AccountMQProducer accountMQProducer){
         this.jpaAccountRepository = jpaAccountRepository;
         this.accountMapper = accountMapper;
         this.accountStrategyFactory = accountStrategyFactory;
         this.jpaMovementRepository = jpaMovementRepository;
         this.webClient = webClient;
+        this.accountMQProducer = accountMQProducer;
     }
 
     // validate account type
@@ -80,6 +83,10 @@ public class AccountRepositoryAdapter implements AccountRepository {
         validateAccountType(account);
 
         AccountEntity saveAccount = accountMapper.toEntity(account);
+        // Notify customer service
+        accountMQProducer.publishAccountCreated(
+                new AccountCreatedEvent(saveAccount.getCustomerId(), saveAccount.getAccountNumber(), saveAccount.getAccountType().name())
+        );
         return accountMapper.toDomain(jpaAccountRepository.save(saveAccount));
     }
 
