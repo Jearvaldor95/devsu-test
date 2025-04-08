@@ -13,6 +13,7 @@ import com.devsu.account_service.infraestructure.adapter.persitence.repository.J
 import com.devsu.account_service.infraestructure.adapter.persitence.repository.JpaMovementRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -32,9 +33,16 @@ public class MovementRepositoryAdapter implements MovementRepository {
     // Validate balance account
     public void updateBalance(Movement movement){
         // Get the account balance
-        double currentBalance = jpaAccountRepository.findBalanceByAccountId(movement.getAccountId());
-        if (currentBalance == 0.00){
+        Double balance = jpaAccountRepository.findBalanceByAccountId(movement.getAccountId());
+        double currentBalance = balance != null ? balance : 0.0;
+
+        // Validate insufficient balance
+        if (currentBalance == 0.00 && movement.getMovementType().equals(MovementType.WITHDRAWAL)) {
             throw new FieldInvalidException("The unavailable balance");
+        }
+
+        if (movement.getMovementType().equals(MovementType.WITHDRAWAL) && movement.getValue() > currentBalance) {
+            throw new FieldInvalidException("Insufficient balance");
         }
 
         // Get account
@@ -44,14 +52,19 @@ public class MovementRepositoryAdapter implements MovementRepository {
         // Validate movement type
         if (movement.getMovementType().equals(MovementType.DEPOSIT)){
             account.setInitialBalance(currentBalance + movement.getValue());
+            movement.setBalance(currentBalance + movement.getValue());
+            movement.setMovement("Deposito de "+movement.getValue());
         } else if (movement.getMovementType().equals(MovementType.WITHDRAWAL)) {
             account.setInitialBalance(account.getInitialBalance() - movement.getValue());
+            movement.setBalance(currentBalance - movement.getValue());
+            movement.setMovement("Retiro de "+movement.getValue());
         }
         jpaAccountRepository.save(account);
     }
     @Override
     public Movement saveMovement(Movement movement) {
         updateBalance(movement);
+        movement.setDate(LocalDate.now());
 
         MovementEntity saveMovement = movementMapper.toEntity(movement);
         return movementMapper.toDomain(jpaMovementRepository.save(saveMovement));
@@ -65,8 +78,8 @@ public class MovementRepositoryAdapter implements MovementRepository {
         updateBalance(movement);
 
         movementMapper.updateMovement(existingMovement, movement);
-        MovementEntity updateMovement = jpaMovementRepository.save(existingMovement);
-        return movementMapper.toDomain(updateMovement);
+
+        return movementMapper.toDomain(jpaMovementRepository.save(existingMovement));
     }
 
     @Override
