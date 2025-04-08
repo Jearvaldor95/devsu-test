@@ -12,7 +12,7 @@ public class CurrentStrategy implements AccountStrategy{
         if (account.getInitialBalance() < 25000.00){
             throw new FieldInvalidException("Invalid initial balance");
         }
-        account.setAccountType(AccountType.SAVINGS_ACCOUNT);
+        account.setAccountType(AccountType.CURRENT_ACCOUNT);
         account.setInitialBalance(account.getInitialBalance());
         return account;
     }
