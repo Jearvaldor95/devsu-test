@@ -4,6 +4,7 @@ import com.devsu.account_service.domain.model.Account;
 import com.devsu.account_service.domain.model.AccountReport;
 import com.devsu.account_service.domain.model.Movement;
 import com.devsu.account_service.domain.repository.AccountRepository;
+import com.devsu.account_service.domain.strategy.AccountStrategy;
 import com.devsu.account_service.domain.strategy.AccountStrategyFactory;
 import com.devsu.account_service.exception.AccountNotFoundException;
 import com.devsu.account_service.exception.ConflictException;
@@ -35,10 +36,26 @@ public class AccountRepositoryAdapter implements AccountRepository {
         this.jpaMovementRepository = jpaMovementRepository;
         this.movementMapper = movementMapper;
     }
+
+    public void validateAccountType(Account account){
+        String accountType = account.getAccountType().name();
+
+        // Check the account type
+        AccountStrategy strategy = accountStrategyFactory.getAccountType(accountType);
+
+        account = strategy.createAccount(account);
+
+        // Generate unique account number according to type
+        String accountNumber = accountStrategyFactory.generateAccountNumber(accountType);
+        account.setAccountNumber(Long.valueOf(accountNumber));
+    }
     @Override
     public Account saveAccount(Account account) {
+        String accountType = account.getAccountType().name();
+
         // Check the account type
-        accountStrategyFactory.getAccountType(account.getAccountType().name());
+        AccountStrategy strategy = accountStrategyFactory.getAccountType(accountType);
+        account = strategy.createAccount(account);
 
         // Generate unique account number according to type
         String generatedAccountNumber = accountStrategyFactory.generateAccountNumber(account.getAccountType().name());
