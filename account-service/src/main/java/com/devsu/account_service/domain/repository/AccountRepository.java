@@ -1,14 +1,15 @@
 package com.devsu.account_service.domain.repository;
 
 import com.devsu.account_service.domain.model.Account;
-import com.devsu.account_service.domain.model.AccountReport;
+import com.devsu.account_service.infraestructure.adapter.external.CustomerDto;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public interface AccountRepository {
 
     Account saveAccount(Account account);
+
+    CustomerDto getCustomerById(Integer customerId);
 
     List<Account> getAccounts();
 
@@ -20,5 +21,7 @@ public interface AccountRepository {
 
     List<Account> findByCustomerId(Integer customerId);
 
-    List<AccountReport> getReports(LocalDate startDate, LocalDate endDate, Integer customerId);
+    Boolean existsAccountNumber(Long accountNumber);
+
+    Double findBalanceByAccountId(Integer accountId);
 }

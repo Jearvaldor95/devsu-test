@@ -15,4 +15,6 @@ public interface CustomerRepository {
     Customer updateCustomer(Integer customerId, Customer customer);
 
     void deleteCustomer(Integer customerId);
+
+    Boolean existsByIdentification(Integer identification);
 }
