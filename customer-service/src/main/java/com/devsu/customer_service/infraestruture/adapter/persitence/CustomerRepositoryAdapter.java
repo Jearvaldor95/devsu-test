@@ -1,6 +1,7 @@
 package com.devsu.customer_service.infraestruture.adapter.persitence;
 
 import com.devsu.customer_service.domain.model.Customer;
+import com.devsu.customer_service.domain.repository.CustomerRepository;
 import com.devsu.customer_service.exception.CustomerAlreadyExistsException;
 import com.devsu.customer_service.exception.CustomerNotFoundException;
 import com.devsu.customer_service.infraestruture.adapter.persitence.entity.CustomerEntity;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Repository
-public class CustomerRepositoryAdapter implements com.devsu.customer_service.domain.repository.CustomerRepository {
+public class CustomerRepositoryAdapter implements CustomerRepository {
 
     private final JpaCustomerRepository jpaCustomerRepository;
     private final CustomerMapper customerMapper;
@@ -23,9 +24,6 @@ public class CustomerRepositoryAdapter implements com.devsu.customer_service.dom
     }
     @Override
     public Customer saveCustomer(Customer customer) {
-        if (jpaCustomerRepository.existsByIdentification(customer.getIdentification())){
-            throw new CustomerAlreadyExistsException("Customer with this identification already exists");
-        }
         CustomerEntity entity = customerMapper.toCustomerEntity(customer);
         CustomerEntity savedEntity = jpaCustomerRepository.save(entity);
         return customerMapper.toCustomer(savedEntity);
@@ -61,5 +59,14 @@ public class CustomerRepositoryAdapter implements com.devsu.customer_service.dom
                 .orElseThrow(() -> new CustomerNotFoundException("Customer not found with id: " + customerId));
         jpaCustomerRepository.delete(existingCustomer);
 
+    }
+
+    @Override
+    public Boolean existsByIdentification(Integer identification) {
+        boolean exists = jpaCustomerRepository.existsByIdentification(identification);
+        if (exists) {
+            throw new CustomerAlreadyExistsException("Customer with this identification already exists");
+        }
+        return false;
     }
 }

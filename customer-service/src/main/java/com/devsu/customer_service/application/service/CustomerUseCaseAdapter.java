@@ -16,6 +16,7 @@ public class CustomerUseCaseAdapter implements CustomerUseCase{
     }
     @Override
     public Customer saveCustomer(Customer customer) {
+        customerRepository.existsByIdentification(customer.getIdentification());
         return customerRepository.saveCustomer(customer);
     }
 
